@@ -1,6 +1,6 @@
 'use client';
-
 import { useEffect, useState } from 'react';
+import Select from 'react-select';
 
 type Chat = {
   id: number;
@@ -8,21 +8,25 @@ type Chat = {
   type: string;
 };
 
+type Option = {
+  value: string;
+  label: string;
+};
+
 export default function DashboardPage() {
-  const [source, setSource] = useState('');
-  const [destination, setDestination] = useState('');
-  const [links, setLinks] = useState<{ source: string; dest: string }[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [error, setError] = useState('');
+  const [source, setSource] = useState<Option | null>(null);
+  const [dest, setDest] = useState<Option | null>(null);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    const phone = localStorage.getItem('telegramPhone');
-    if (!phone) {
-      setError('No phone found in localStorage');
-      return;
-    }
-
     const fetchChats = async () => {
+      const phone = localStorage.getItem('telegramPhone');
+      if (!phone) {
+        setError('No phone number found. Please connect first.');
+        return;
+      }
+
       try {
         const res = await fetch('http://localhost:5001/get-chats', {
           method: 'POST',
@@ -31,83 +35,70 @@ export default function DashboardPage() {
         });
 
         const data = await res.json();
-        if (res.ok) {
-          setChats(data);
+
+        if (Array.isArray(data)) {
+          const cleaned = data
+            .filter((chat) => chat.name && chat.name.trim() !== '')
+            .sort((a, b) => a.name.localeCompare(b.name));
+          setChats(cleaned);
+          setError('');
         } else {
-          setError(data.error || 'Unknown error');
+          setError(data.error || 'Unexpected error');
         }
-      } catch (err) {
-        setError((err as Error).message);
+      } catch (e) {
+        setError('Failed to load chats. Is the backend running?');
       }
     };
 
     fetchChats();
   }, []);
 
-  const addLink = () => {
-    if (source && destination && source !== destination) {
-      setLinks([...links, { source, dest: destination }]);
-      setSource('');
-      setDestination('');
-    }
-  };
+  const chatOptions: Option[] = chats.map((chat) => ({
+    value: chat.id.toString(),
+    label: chat.name,
+  }));
 
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-2xl font-bold mb-4">🔗 Chat Forwarding Links</h1>
+    <main className="p-4 max-w-md mx-auto">
+      <h1 className="text-xl font-bold mb-2">Chat Forwarding Links</h1>
 
-      {error && <p className="text-red-500 mb-4">⚠️ {error}</p>}
+      {error && <p className="text-sm text-red-600 mb-2">⚠️ {error}</p>}
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <h2 className="text-lg font-semibold mb-2">Link Chats</h2>
-        <div className="flex flex-col md:flex-row gap-4">
-          <select
+      <div className="bg-white p-4 shadow rounded space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Select Source</label>
+          <Select
+            options={chatOptions}
             value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="p-2 border rounded w-full"
-          >
-            <option value="">Select Source</option>
-            {chats.map((chat) => (
-              <option key={chat.id} value={chat.id}>
-                {chat.name} ({chat.type})
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            className="p-2 border rounded w-full"
-          >
-            <option value="">Select Destination</option>
-            {chats.map((chat) => (
-              <option key={chat.id} value={chat.id}>
-                {chat.name} ({chat.type})
-              </option>
-            ))}
-          </select>
-
-          <button
-            onClick={addLink}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            ➕ Link
-          </button>
+            onChange={(selected) => setSource(selected)}
+            placeholder="Select source chat..."
+            isSearchable
+          />
         </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Select Destination</label>
+          <Select
+            options={chatOptions}
+            value={dest}
+            onChange={(selected) => setDest(selected)}
+            placeholder="Select destination chat..."
+            isSearchable
+          />
+        </div>
+
+        <button
+          className="w-full bg-blue-500 text-white py-2 rounded"
+          onClick={() => {
+            if (source && dest && source.value !== dest.value) {
+              alert(`Linking ${source.label} ➜ ${dest.label}`);
+              // Add your link logic here
+            }
+          }}
+        >
+          + Link
+        </button>
       </div>
-
-      {links.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-2">Current Links</h2>
-          <ul className="list-disc list-inside">
-            {links.map((link, index) => (
-              <li key={index}>
-                {link.source} ➜ {link.dest}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </main>
   );
 }
