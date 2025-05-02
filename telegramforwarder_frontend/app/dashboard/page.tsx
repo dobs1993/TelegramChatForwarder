@@ -40,8 +40,15 @@ export default function DashboardPage() {
           const cleaned = data
             .filter((chat) => chat.name && chat.name.trim() !== '')
             .sort((a, b) => a.name.localeCompare(b.name));
+
           setChats(cleaned);
           setError('');
+
+          // ✅ Save chat name map for future lookups in /links page
+          const chatMap = Object.fromEntries(
+            cleaned.map((chat) => [chat.id, chat.name])
+          );
+          localStorage.setItem('chatNameMap', JSON.stringify(chatMap));
         } else {
           setError(data.error || 'Unexpected error');
         }
@@ -89,10 +96,26 @@ export default function DashboardPage() {
 
         <button
           className="w-full bg-blue-500 text-white py-2 rounded"
-          onClick={() => {
+          onClick={async () => {
             if (source && dest && source.value !== dest.value) {
-              alert(`Linking ${source.label} ➜ ${dest.label}`);
-              // Add your link logic here
+              const phone = localStorage.getItem("telegramPhone");
+
+              const res = await fetch("http://localhost:5001/set-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  phone,
+                  source_id: source.value,
+                  destination_id: dest.value,
+                }),
+              });
+
+              const data = await res.json();
+              if (res.ok) {
+                alert(`✅ Linked ${source.label} ➜ ${dest.label}`);
+              } else {
+                alert(`❌ Error: ${data.error}`);
+              }
             }
           }}
         >
