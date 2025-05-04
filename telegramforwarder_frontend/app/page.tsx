@@ -1,36 +1,41 @@
-// src/app/page.tsx
-'use client';
+'use client'
 
-import Link from 'next/link';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function Home() {
+export default function HomePage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const userRaw = localStorage.getItem('telegramUser')
+    const phone = localStorage.getItem('telegramPhone')
+
+    if (!phone) {
+      router.replace('/connect')
+      return
+    }
+
+    if (!userRaw) {
+      router.replace('/verify-code')
+      return
+    }
+
+    const user = JSON.parse(userRaw)
+    if (user.is_subscribed) {
+      router.replace('/dashboard')
+    } else {
+      router.replace('/subscribe')
+    }
+  }, [router])
+
   return (
-    <main className="flex flex-col items-center justify-center text-center min-h-screen px-4 space-y-6">
-      <div className="text-2xl font-semibold">🚀 TelegramTools</div>
-      <p className="text-sm text-gray-600 max-w-sm">
-        This app helps you forward messages from private Telegram chats, filter out unwanted content, and manage your connections — all with no sensitive data stored.
-      </p>
-
-      <div className="w-full flex flex-col space-y-3">
-        <Link
-          href="/onboarding"
-          className="bg-telegram text-white py-2 rounded-md text-sm text-center hover:bg-[#0075b4]"
-        >
-          Start Onboarding
-        </Link>
-        <Link
-          href="/connect"
-          className="text-sm text-telegram text-center underline"
-        >
-          Already have a code?
-        </Link>
-        <Link
-          href="/dashboard"
-          className="text-sm text-gray-500 text-center underline"
-        >
-          Go to Dashboard
-        </Link>
+    <main className="min-h-screen flex items-center justify-center">
+      <div className="text-center text-gray-600">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#0088cc] mx-auto mb-4"></div>
+        Redirecting...
       </div>
     </main>
-  );
+  )
 }
+

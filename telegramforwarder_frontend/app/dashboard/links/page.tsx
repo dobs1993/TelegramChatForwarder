@@ -1,122 +1,69 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Select from 'react-select';
+import { useRouter } from 'next/navigation';
 
-type Chat = {
-  id: number;
-  name: string;
-  type: string;
+type Link = {
+  source_id: number;
+  destination_id: number;
 };
 
-type Option = {
-  value: string;
-  label: string;
-};
-
-export default function DashboardPage() {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [source, setSource] = useState<Option | null>(null);
-  const [dest, setDest] = useState<Option | null>(null);
-  const [error, setError] = useState<string>('');
+export default function DashboardLinksPage() {
+  const [links, setLinks] = useState<Link[]>([]);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchChats = async () => {
-      const phone = localStorage.getItem('telegramPhone');
-      if (!phone) {
-        setError('No phone number found. Please connect first.');
-        return;
-      }
+    const user = JSON.parse(localStorage.getItem('telegramUser') || '{}');
+    if (!user?.is_subscribed) {
+      router.push('/subscribe');
+      return;
+    }
 
-      try {
-        const res = await fetch('http://localhost:5001/get-chats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone }),
-        });
+    const phone = localStorage.getItem('telegramPhone');
+    if (!phone) {
+      setError('No phone number found. Please connect first.');
+      return;
+    }
 
-        const data = await res.json();
-
+    fetch('http://localhost:5001/get-links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
         if (Array.isArray(data)) {
-          const cleaned = data
-            .filter((chat) => chat.name && chat.name.trim() !== '')
-            .sort((a, b) => a.name.localeCompare(b.name));
-          setChats(cleaned);
-          setError('');
+          setLinks(data);
         } else {
           setError(data.error || 'Unexpected error');
         }
-      } catch {
-        setError('Failed to load chats. Is the backend running?');
-      }
-    };
+      })
+      .catch(() => setError('Failed to load links. Is the backend running?'));
+  }, [router]);
 
-    fetchChats();
-  }, []);
-
-  const chatOptions: Option[] = chats.map((chat) => ({
-    value: chat.id.toString(),
-    label: chat.name,
-  }));
-
-  const handleLink = async () => {
-    if (source && dest && source.value !== dest.value) {
-      const phone = localStorage.getItem("telegramPhone");
-
-      const res = await fetch("http://localhost:5001/set-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone,
-          source_id: source.value,
-          destination_id: dest.value,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert(`✅ Linked ${source.label} ➜ ${dest.label}`);
-      } else {
-        alert(`❌ Error: ${data.error}`);
-      }
-    }
-  };
+  const chatMap = JSON.parse(localStorage.getItem('chatNameMap') || '{}');
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-bold text-center">🔗 Link Telegram Chats</h1>
+    <main className="p-4 max-w-md mx-auto">
+      <h1 className="text-xl font-bold mb-2">🔍 Active Chat Links</h1>
+      {error && <p className="text-sm text-red-600 mb-2">⚠️ {error}</p>}
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Select Source Chat</label>
-        <Select
-          options={chatOptions}
-          value={source}
-          onChange={setSource}
-          placeholder="Choose source"
-          isSearchable
-        />
+      <div className="bg-white p-4 shadow rounded space-y-3">
+        {links.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center">No links set.</p>
+        ) : (
+          links.map((link, idx) => (
+            <div key={idx} className="text-sm text-gray-800 flex justify-between border-b pb-2 last:border-none">
+              <span>
+                <strong>{chatMap[link.source_id] || link.source_id}</strong> ➜{' '}
+                <strong>{chatMap[link.destination_id] || link.destination_id}</strong>
+              </span>
+            </div>
+          ))
+        )}
       </div>
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Select Destination Chat</label>
-        <Select
-          options={chatOptions}
-          value={dest}
-          onChange={setDest}
-          placeholder="Choose destination"
-          isSearchable
-        />
-      </div>
-
-      <button
-        onClick={handleLink}
-        className="w-full bg-telegram hover:bg-[#0075b4] text-white py-2 rounded-md text-sm"
-      >
-        ➕ Link Chats
-      </button>
-    </div>
+    </main>
   );
 }
 

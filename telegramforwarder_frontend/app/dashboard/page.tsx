@@ -1,5 +1,7 @@
 'use client';
+
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Select from 'react-select';
 
 type Chat = {
@@ -18,8 +20,15 @@ export default function DashboardPage() {
   const [source, setSource] = useState<Option | null>(null);
   const [dest, setDest] = useState<Option | null>(null);
   const [error, setError] = useState<string>('');
+  const router = useRouter();
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('telegramUser') || '{}');
+    if (!user?.is_subscribed) {
+      router.push('/subscribe');
+      return;
+    }
+
     const fetchChats = async () => {
       const phone = localStorage.getItem('telegramPhone');
       if (!phone) {
@@ -44,7 +53,6 @@ export default function DashboardPage() {
           setChats(cleaned);
           setError('');
 
-          // ✅ Save chat name map for future lookups in /links page
           const chatMap = Object.fromEntries(
             cleaned.map((chat) => [chat.id, chat.name])
           );
@@ -58,7 +66,7 @@ export default function DashboardPage() {
     };
 
     fetchChats();
-  }, []);
+  }, [router]);
 
   const chatOptions: Option[] = chats.map((chat) => ({
     value: chat.id.toString(),
@@ -95,7 +103,7 @@ export default function DashboardPage() {
         </div>
 
         <button
-          className="w-full bg-blue-500 text-white py-2 rounded"
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
           onClick={async () => {
             if (source && dest && source.value !== dest.value) {
               const phone = localStorage.getItem("telegramPhone");

@@ -1,52 +1,41 @@
 'use client';
-
 import { useState } from 'react';
 
 export default function ConnectPage() {
   const [phone, setPhone] = useState('');
-  const [status, setStatus] = useState('');
 
-  const sendCode = async () => {
-    setStatus('Sending code...');
-    try {
-      const res = await fetch('http://localhost:5001/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-  
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('telegramPhone', phone); // ✅ Save it here
-        setStatus('✅ Code sent! Check your Telegram app.');
-      } else {
-        setStatus(`❌ Error: ${data.error || 'Unknown issue'}`);
-      }
-    } catch (err) {
-      setStatus(`❌ Network error: ${(err as Error).message}`);
-    }
+  const handleConnect = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('telegramPhone', phone);
+    // Simulate auth trigger
+    alert(`📞 Phone saved: ${phone}`);
   };
-  
 
   return (
-    <main className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold">📱 Enter Your Phone Number</h1>
+    <main className="min-h-screen flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow p-6 w-full max-w-md text-center">
+        <h1 className="text-xl font-bold mb-4 text-gray-800">📞 Connect Telegram</h1>
+        <p className="text-sm text-gray-600 mb-6">
+          Enter your phone number to authenticate your Telegram account.
+        </p>
 
-      <input
-        className="border px-3 py-2 rounded w-full"
-        placeholder="+1234567890"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-      />
-
-      <button
-        onClick={sendCode}
-        className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-      >
-        Send Code
-      </button>
-
-      {status && <p className="mt-4 text-sm text-gray-700">{status}</p>}
+        <form onSubmit={handleConnect} className="space-y-4">
+          <input
+            type="text"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+1 555 123 4567"
+            className="w-full border rounded px-4 py-2 text-lg"
+            required
+          />
+          <button
+            type="submit"
+            className="bg-[#0088cc] text-white w-full py-2 rounded-full hover:bg-[#0075b4] transition"
+          >
+            Connect
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
